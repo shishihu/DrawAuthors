@@ -9,3 +9,9 @@ svg{
     width: 70vw; 
     height: 70vw;
 }
+.controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
