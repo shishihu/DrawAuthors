@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>CIS 568 Assignment 2</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- D3 Library -->
+     <div id="PaperTitle"></div>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="DrawAuthors.js"></script>
+    <script>
+        d3.json("publication_network (1).json").then((data) => {
+            let svg = d3.select('body').append("svg").attr("viewBox", "0 0 1000 800");
+            console.log(data);
+            simulate(data, svg);
+        });
+
+    </script>
+</body>
+
+</html>
