@@ -118,7 +118,7 @@ function simulate(data, svg) {
             tooltip.style("visibility", "visible")
                 .style("left", `${event.pageX + 10}px`)
                 .style("top", `${event.pageY + 10}px`)
-                .html(`<strong>Author:</strong> ${clickedNode.id}<br/><strong>Countries:</strong> ${countriesArray.join(", ") || "N/A"}<br/><strong>Years:</strong> ${clickedNode.years.join(", ")}`);
+                .html(`<strong>Author:</strong> ${clickedNode.id}<br/><strong>Countries:</strong> ${countriesArray.join(", ") || "N/A"}<br/><strong>Publications:</strong> "${clickedNode.titles.join("\", \"") || "N/A"}"`);
         });
 
     // Clicking on empty SVG background or outside the SVG hides the tooltip
