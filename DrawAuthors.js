@@ -6,6 +6,17 @@ function simulate(data, svg) {
         width = parts[2];
         height = parts[3];
     }
+    
+    var tooltip = d3.select("body")
+        .append("div")
+        .style("visibility", "hidden")
+        .style("position", "absolute")
+        .style("background", "white")
+        .style("padding", "8px")
+        .style("border", "1px solid #ccc")
+        .style("border-radius", "4px")
+        .style("pointer-events", "none")
+        .style("font-size", "12px");
 
     // 1. Transform raw author nodes and generate links based on shared titles
     const rawNodes = Array.isArray(data) ? data : (data.nodes || []);
@@ -24,13 +35,12 @@ function simulate(data, svg) {
     const links = [];
     for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
-            // Find shared publication titles between two authors
             const sharedTitles = nodes[i].titles.filter(title => nodes[j].titles.includes(title));
             if (sharedTitles.length > 0) {
                 links.push({
                     source: i,
                     target: j,
-                    value: sharedTitles.length // Weight based on how many titles they share
+                    value: sharedTitles.length
                 });
             }
         }
@@ -59,13 +69,13 @@ function simulate(data, svg) {
     let main_group = svg.append("g")
         .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
-    const treatAuthorsClass=(Author)=>{
-        let temp=Author.toString().split(' ').join('');
-        temp = temp.split("."),join('');
-        temp = temp.split(","),join('');
-        temp = temp.split("/"),join('');
-        return "gr" + temp
-    }
+    // Helper for countries extraction
+    const getCountries = (node) => {
+        let cList = node.Countries || node.countries || [];
+        if (typeof cList === "string") cList = [cList];
+        return cList.map(c => String(c).trim().toLowerCase());
+    };
+
     // 4. Render link elements inside the centered group
     let link_elements = main_group.append("g")
         .selectAll(".line")
@@ -76,9 +86,8 @@ function simulate(data, svg) {
         .attr("stroke-opacity", 0.6)
         .style("stroke-width", (d) => d.value);
 
-    // 5. Render node elements inside the centered group
+    // 5. Render node elements directly inside main_group (removed faulty inner group & transform)
     let node_elements = main_group.append("g")
-        .attr('transform', 'translate(${(width/2), ${height / 2})')
         .selectAll(".circle")
         .data(nodes)
         .enter()
@@ -87,16 +96,9 @@ function simulate(data, svg) {
         .attr("fill", (d) => color(d.group))
         .on("mouseover", function() {
             const hovered = this.__data__;
-            
-            const getCountries = (node) => {
-                let cList = node.Countries || node.countries || [];
-                if (typeof cList === "string") cList = [cList];
-                return cList.map(c => String(c).trim().toLowerCase());
-            };
-
             const hoveredCountries = new Set(getCountries(hovered));
 
-        // Highlight nodes that share at least one country with the hovered node
+            // Highlight nodes that share at least one country with the hovered node
             node_elements.style("opacity", (author) => {
                 if (author === hovered) return 1;
                 const authorCountries = getCountries(author);
@@ -104,9 +106,28 @@ function simulate(data, svg) {
                 return sharesCountry ? 1 : 0.2;
             });
         })
-            .on("mouseout", function() {
-                node_elements.style("opacity", null);
+        .on("mouseout", function() {
+            node_elements.style("opacity", null);
         })
+        .on("click", function(event) {
+            event.stopPropagation(); // Prevent triggering background click
+            const clickedNode = this.__data__;
+            const countriesArray = getCountries(clickedNode);
+
+            tooltip.style("visibility", "visible")
+                .style("left", `${event.pageX + 10}px`)
+                .style("top", `${event.pageY + 10}px`)
+                .html(`<strong>Author:</strong> ${clickedNode.id}<br/><strong>Countries:</strong> ${countriesArray.join(", ") || "N/A"}<br/><strong>Years:</strong> ${clickedNode.years.join(", ")}`);
+        });
+
+    // Clicking on empty SVG background or outside the SVG hides the tooltip
+    svg.on("click", function() {
+        tooltip.style("visibility", "hidden");
+    });
+
+    window.addEventListener("click", function() {
+        tooltip.style("visibility", "hidden");
+    });
 
     // 6. Force Simulation setup
     let ForceSimulation = d3.forceSimulation(nodes)
@@ -117,8 +138,7 @@ function simulate(data, svg) {
         .force("x", d3.forceX().strength(0.1))
         .force("y", d3.forceY().strength(0.1))
         .force("charge", d3.forceManyBody().strength(-30))
-        .force("link", d3.forceLink(links).id((d) => d.index),
-        )
+        .force("link", d3.forceLink(links).id((d) => d.index))
         .on("tick", ticked);
 
     function ticked() {
