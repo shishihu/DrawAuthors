@@ -94,8 +94,9 @@ function simulate(data, svg) {
         .append("circle")
         .attr("r", (d, i) => scale_radius(node_degree[i]))
         .attr("fill", (d) => color(d.group))
-        .on("mouseover", function() {
-            const hovered = this.__data__;
+        .on("mouseover", function(event, hovered) {
+            // D3 v5 passes the datum as the first argument, while v6+ passes it second.
+            if (hovered === undefined) hovered = event;
             const hoveredCountries = new Set(getCountries(hovered));
 
             // Highlight nodes that share at least one country with the hovered node
@@ -141,6 +142,52 @@ function simulate(data, svg) {
         .force("link", d3.forceLink(links).id((d) => d.index))
         .on("tick", ticked);
 
+    // The previous code only attached listeners to selectors; it never
+    // created the slider elements, so nothing was visible on the page.
+    const controls = d3.select("body").append("div")
+        .attr("class", "simulation-controls")
+        .style("position", "fixed")
+        .style("top", "12px")
+        .style("right", "12px")
+        .style("z-index", "1000")
+        .style("padding", "10px")
+        .style("background", "white")
+        .style("border", "1px solid #ccc")
+        .style("border-radius", "4px")
+        .style("font", "12px sans-serif");
+
+    function addSlider(id, label, min, max, initial, step, update) {
+        const row = controls.append("label")
+            .style("display", "block")
+            .style("margin", "4px 0");
+        row.append("span").text(`${label}: `);
+        const output = row.append("span").text(initial);
+        row.append("input")
+            .attr("id", id)
+            .attr("type", "range")
+            .attr("min", min)
+            .attr("max", max)
+            .attr("step", step)
+            .property("value", initial)
+            .style("display", "block")
+            .on("input", function() {
+                const value = +this.value;
+                output.text(value);
+                update(value);
+                ForceSimulation.alpha(0.3).restart();
+            });
+    }
+
+    addSlider("charge-slider", "Charge", -200, 0, -30, 1, (value) => {
+        ForceSimulation.force("charge").strength(value);
+    });
+    addSlider("collide-slider", "Collision", 0, 10, 4, 0.1, (value) => {
+        ForceSimulation.force("collide").radius((d) => scale_radius(node_degree[d.index]) * value);
+    });
+    addSlider("link-strength", "Link strength", 0, 2, 1, 0.1, (value) => {
+        ForceSimulation.force("link").strength(value);
+    });
+        
     function ticked() {
         node_elements
             .attr("cx", (d) => d.x)
